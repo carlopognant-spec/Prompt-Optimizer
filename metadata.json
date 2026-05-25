@@ -1,0 +1,8 @@
+{
+  "name": "Prompt Optimizer — Standard 2026",
+  "description": "An elite AI-powered tool to analyze, optimize, and standardize prompts using canonical XML architecture.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
