@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Header } from "./components/Header";
-import { ScoreMeter } from "./components/ScoreMeter";
 import { ResultPanel } from "./components/ResultPanel";
 import { optimizePrompt, analyzePrompt } from "./lib/gemini";
 import { AppState, View, HistoryEntry } from "./types";
@@ -109,7 +108,6 @@ export default function App() {
         id: crypto.randomUUID(),
         timestamp: Date.now(),
         rawPrompt: promptToOptimize,
-        optimizedPrompt: result.optimized_prompt || "",
         result,
       };
       setState((prev) => ({ 
@@ -136,8 +134,6 @@ export default function App() {
   const loadExample = (text: string) => {
     setState(prev => ({ ...prev, rawPrompt: text, result: null, error: null, currentView: "optimizer" }));
   };
-
-  const delta = state.result ? state.result.score_after - state.result.score_before : 0;
 
   return (
     <div className="min-h-screen bg-interface-bg text-[#2c241a] font-sans selection:bg-gold/20">
@@ -353,31 +349,6 @@ export default function App() {
                     </div>
                   ) : (
                     <div className="flex flex-col h-full overflow-hidden animate-in fade-in slide-in-from-right-4 duration-1000">
-                      {/* Scoring Header */}
-                      <div className="flex items-center gap-10 py-6 border-b border-gold/10 mb-8">
-                         <ScoreMeter 
-                          score={state.result.score_before} 
-                          label="Source Entropy" 
-                          color="#d1c7bc"
-                        />
-                        <ArrowLeftRight className="w-4 h-4 text-gold/20 shrink-0" />
-                        <ScoreMeter 
-                          score={state.result.score_after} 
-                          label="Structure Cohesion" 
-                          color="#8b7355"
-                        />
-                        <div className="ml-auto text-right">
-                          <span className="text-[9px] text-gold/40 uppercase tracking-widest mb-1 block italic font-mono">Efficiency Delta</span>
-                          <div 
-                            className={`text-4xl font-serif italic tracking-tighter ${
-                              delta >= 30 ? "text-green-700" : delta >= 15 ? "text-orange-700" : "text-[#2c241a]"
-                            }`}
-                          >
-                            +{delta}<span className="text-xs not-italic ml-1 opacity-20">pts</span>
-                          </div>
-                        </div>
-                      </div>
-
                       <ResultPanel result={state.result} rawPrompt={state.rawPrompt} />
                     </div>
                   )}
@@ -564,10 +535,6 @@ export default function App() {
                                 <span className="text-[10px] text-gold/40 font-mono">
                                   {new Date(entry.timestamp).toLocaleString()}
                                 </span>
-                                <div className="flex items-center gap-2">
-                                   <div className="text-xs font-bold text-[#2c241a]">Score:</div>
-                                   <div className="text-sm font-serif italic text-gold">{entry.result.score_after}</div>
-                                </div>
                               </div>
                               <ChevronRight className="w-4 h-4 text-gold/20 group-hover:text-gold transition-colors" />
                             </div>
