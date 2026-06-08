@@ -1,16 +1,59 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Check, AlertCircle, ChevronRight, Sparkles } from "lucide-react";
-import { OptimizationResult, Violation } from "../types";
+import { Check, ChevronRight, Sparkles } from "lucide-react";
+import { OptimizationResult } from "../types";
 
 interface ResultPanelProps {
   result: OptimizationResult;
   rawPrompt: string;
 }
 
-type Tab = "optimized" | "violations";
+type Tab = "optimized" | "violations" | "diff";
 
-export function ResultPanel({ result }: ResultPanelProps) {
+function computeDiff(original: string, modified: string) {
+  const lines1 = original.split("\n");
+  const lines2 = modified.split("\n");
+  const m = lines1.length;
+  const n = lines2.length;
+  
+  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (lines1[i - 1] === lines2[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1] + 1;
+      } else {
+        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+      }
+    }
+  }
+  
+  interface DiffLine {
+    type: "added" | "removed" | "unchanged";
+    text: string;
+  }
+  const diff: DiffLine[] = [];
+  let i = m;
+  let j = n;
+  
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && lines1[i - 1] === lines2[j - 1]) {
+      diff.push({ type: "unchanged", text: lines1[i - 1] });
+      i--;
+      j--;
+    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+      diff.push({ type: "added", text: lines2[j - 1] });
+      j--;
+    } else if (i > 0 && (j === 0 || dp[i - 1][j] >= dp[i][j - 1])) {
+      diff.push({ type: "removed", text: lines1[i - 1] });
+      i--;
+    }
+  }
+  
+  return diff.reverse();
+}
+
+export function ResultPanel({ result, rawPrompt }: ResultPanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>("optimized");
   const [copiedType, setCopiedType] = useState<"text" | "json" | null>(null);
 
@@ -65,7 +108,8 @@ ${result.optimized_prompt}
       <div className="flex border-b border-gold/10">
         {[
           { id: "optimized", label: "Optimized Structure" },
-          { id: "violations", label: `Violations (${result.violations?.length || 0})` }
+          { id: "violations", label: `Violations (${result.violations?.length || 0})` },
+          { id: "diff", label: "Diff View" }
         ].map((t) => (
           <button
             key={t.id}
@@ -177,7 +221,7 @@ ${result.optimized_prompt}
                   No high-weighted violations detected.
                 </div>
               ) : (
-                result.violations.map((v: Violation, i) => {
+                result.violations.map((v, i) => {
                   const colors = { critical: "#8b3a3a", warning: "#8b5a2b", info: "#5d5142" };
                   const c = colors[v.severity];
                   return (
@@ -202,13 +246,40 @@ ${result.optimized_prompt}
               )}
             </motion.div>
           )}
+
+          {activeTab === "diff" && (
+            <motion.div
+              key="diff"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="flex flex-col font-mono text-xs leading-relaxed overflow-x-auto bg-zinc-950/20 p-6 rounded-xl border border-gold/10"
+            >
+              {computeDiff(rawPrompt, result.optimized_prompt).map((line, idx) => {
+                let className = "text-zinc-500 whitespace-pre";
+                let prefix = " ";
+                if (line.type === "added") {
+                  className = "bg-green-950/20 text-green-400 whitespace-pre";
+                  prefix = "+";
+                } else if (line.type === "removed") {
+                  className = "bg-red-950/20 text-red-400 whitespace-pre";
+                  prefix = "âˆ’";
+                }
+                return (
+                  <div key={idx} className={`${className} px-2 py-0.5 rounded`}>
+                    {prefix} {line.text}
+                  </div>
+                );
+              })}
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
       
       <div className="flex items-center justify-between pt-4 border-t border-gold/10 text-[9px] uppercase text-gold/40 tracking-[0.2em] mt-auto font-mono">
         <span>System Status: Optimal</span>
         <span>Canonical XML V2.4</span>
-        <span>Engine: Gemini-2.5-Pro</span>
+        <span>Engine: Gemini-2.5-Flash</span>
       </div>
     </div>
   );

@@ -6,7 +6,6 @@ import { AppState, View, HistoryEntry } from "./types";
 import { ArrowLeftRight, Sparkles, Zap, ShieldCheck, History, Library, Layout, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { TEMPLATES } from "../data/templates";
-import { safeLocalStorage } from "./lib/localStorage";
 
 const EXAMPLES = [
   {
@@ -34,11 +33,21 @@ const INITIAL_STATE: AppState = {
 };
 
 function loadSavedState(): AppState {
-  return safeLocalStorage.getItem<AppState>("standard_state", INITIAL_STATE);
+  try {
+    const saved = localStorage.getItem("standard_state");
+    return saved ? JSON.parse(saved) : INITIAL_STATE;
+  } catch (error) {
+    console.error("Failed to load saved state:", error);
+    return INITIAL_STATE;
+  }
 }
 
 function saveState(state: AppState) {
-  safeLocalStorage.setItem("standard_state", state);
+  try {
+    localStorage.setItem("standard_state", JSON.stringify(state));
+  } catch (error) {
+    console.error("Failed to save state:", error);
+  }
 }
 
 export default function App() {
